@@ -1,0 +1,12 @@
+<div class="comment" id="comment-{{ c.pk }}">
+  <div class="d-flex justify-content-between">
+    <strong>{{ c.user.username }}</strong>
+    <span class="text-muted small">{{ c.timestamp|date:"d M Y, H:i" }}</span>
+  </div>
+  <p class="mb-1">{{ c.text|linebreaksbr }}</p>
+  {% if user == c.user or perms.notes.delete_comment %}
+  <form method="post" action="{% url 'delete_comment' c.pk %}" class="d-inline">{% csrf_token %}
+    <button class="btn btn-link btn-sm p-0 text-danger" type="submit">Delete</button>
+  </form>
+  {% endif %}
+</div>

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Report queue · PeerNotes{% endblock %}
+{% block content %}
+<h1 class="page-h">Report queue</h1>
+<p class="text-muted">{{ reports|length }} open report{{ reports|length|pluralize }}, oldest first.
+  {% if not can_remove %}Reviewers can resolve or dismiss reports; only moderators can remove notes.{% endif %}
+  <a class="ms-2" href="{% url 'moderation_export' %}">Export all reports (CSV)</a></p>
+
+{% for r in reports %}
+<article class="note-card report-card mb-3">
+  <div class="d-flex flex-wrap justify-content-between gap-2">
+    <span class="subject-chip">{{ r.get_reason_display }}</span>
+    <span class="text-muted small">Reported by <strong>{{ r.reporter.username }}</strong> on {{ r.created|date:"d M Y, H:i" }}</span>
+  </div>
+  <h2 class="note-title">
+    {% if r.note %}<a href="{{ r.note.get_absolute_url }}">{{ r.note.title }}</a>{% else %}{{ r.note_title }} <span class="text-muted small">(note already removed)</span>{% endif %}
+  </h2>
+  {% if r.note %}
+  <p class="small text-muted mb-1">{{ r.note.subject.name }}, uploaded by {{ r.note.uploader.username }}
+    {% if r.note.is_likely_duplicate %}<span class="sim-pill">{{ r.note.similarity_score|floatformat:2 }} similarity flag</span>{% endif %}</p>
+  {% endif %}
+  {% if r.details %}<p class="note-desc mb-2">&ldquo;{{ r.details }}&rdquo;</p>{% endif %}
+  {% if can_resolve %}
+  <div class="d-flex flex-wrap gap-2 mt-1">
+    {% if can_remove and r.note %}
+    <form method="post" action="{% url 'report_action' r.pk 'remove' %}" onsubmit="return confirm('Remove this note permanently?');">{% csrf_token %}
+      <button class="btn btn-outline-danger btn-sm" type="submit">Remove note</button></form>
+    {% endif %}
+    <form method="post" action="{% url 'report_action' r.pk 'resolve' %}">{% csrf_token %}
+      <button class="btn btn-ink btn-sm" type="submit">Mark resolved</button></form>
+    <form method="post" action="{% url 'report_action' r.pk 'dismiss' %}">{% csrf_token %}
+      <button class="btn btn-outline-dark btn-sm" type="submit">Dismiss</button></form>
+  </div>
+  {% endif %}
+</article>
+{% empty %}
+<div class="empty"><p class="mb-0"><strong>The queue is clear.</strong> No open reports.</p></div>
+{% endfor %}
+
+{% if handled %}
+<h2 class="h5 mt-5">Recently handled</h2>
+<div class="table-responsive">
+<table class="table table-sm align-middle">
+  <thead><tr><th>Note</th><th>Reason</th><th>Outcome</th><th>By</th><th>When</th></tr></thead>
+  <tbody>
+  {% for r in handled %}
+    <tr><td>{% if r.note %}<a href="{{ r.note.get_absolute_url }}">{{ r.note_title }}</a>{% else %}{{ r.note_title }} <span class="text-muted small">(removed)</span>{% endif %}</td>
+        <td>{{ r.get_reason_display }}</td><td>{{ r.get_status_display }}</td>
+        <td>{{ r.resolved_by.username|default:"-" }}</td><td>{{ r.resolved_at|date:"d M Y, H:i" }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

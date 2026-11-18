@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} · PeerNotes{% endblock %}
+{% block content %}
+{% if similar %}
+<div class="auth-box wide dup-warning">
+  <h1>Possible duplicate</h1>
+  <div class="alert alert-warning py-2" role="alert">
+    This upload looks very similar (at least {{ threshold_pct }}%) to {{ similar|length }} note{{ similar|length|pluralize }}
+    already in this subject. Please check before adding another copy.
+  </div>
+  <ul class="dup-list">
+    {% for h in similar %}
+    <li>
+      <a href="{{ h.note.get_absolute_url }}" target="_blank" rel="noopener">{{ h.note.title }}</a>
+      <span class="text-muted small">by {{ h.note.uploader.username }}, {{ h.note.upload_date|date:"d M Y" }}</span>
+      <span class="sim-pill" title="TF-IDF cosine similarity">{{ h.percent }}% similar</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% if pending %}
+  <p class="small text-muted mb-3">You are uploading <strong>{{ pending.data.title }}</strong> ({{ pending.name }}).</p>
+  <form method="post">{% csrf_token %}
+    <input type="hidden" name="confirm_duplicate" value="1">
+    <button class="btn btn-ink" type="submit">Upload anyway</button>
+    <button class="btn btn-outline-dark" type="submit" name="action" value="cancel">Discard upload</button>
+  </form>
+  <p class="small text-muted mt-3 mb-0">If you upload anyway, moderators will see this note flagged as a likely duplicate.</p>
+  {% endif %}
+</div>
+{% else %}
+<div class="auth-box wide">
+  <h1>{{ heading }}</h1>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    {% include "notes/_form_fields.html" %}
+    <button class="btn btn-ink" type="submit">{% if note %}Save changes{% else %}Upload note{% endif %}</button>
+    <a class="btn btn-link" href="{% if note %}{{ note.get_absolute_url }}{% else %}{% url 'note_list' %}{% endif %}">Cancel</a>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

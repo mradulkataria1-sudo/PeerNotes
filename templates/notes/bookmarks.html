@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Saved notes · PeerNotes{% endblock %}
+{% block content %}
+<h1 class="page-h">Saved notes</h1>
+{% include "notes/_note_grid.html" with total=page_obj.paginator.count %}
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}{{ note.title }} · PeerNotes{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <article class="note-sheet">
+      <span class="subject-chip">{{ note.subject.name }}</span>
+      <span class="text-muted small ms-2">Semester {{ note.subject.semester }}, {{ note.subject.get_branch_display }}</span>
+      <h1 class="page-h mt-2">{{ note.title }}</h1>
+      <p class="text-muted small">Uploaded by <strong>{{ note.uploader.username }}</strong> on {{ note.upload_date|date:"d M Y" }}</p>
+      {% if note.description %}<p class="note-body">{{ note.description|linebreaksbr }}</p>{% endif %}
+      {% if duplicate_of %}
+      <div class="alert alert-warning py-2 small">Flagged for moderators: {{ note.similarity_score|floatformat:2 }} similarity to
+        <a href="{{ duplicate_of.get_absolute_url }}">{{ duplicate_of.title }}</a>.</div>
+      {% endif %}
+      <div class="mb-3">{% for t in note.tag_list %}<a class="tag" href="{% url 'note_list' %}?tag={{ t|urlencode }}">{{ t }}</a>{% endfor %}</div>
+      <div class="d-flex flex-wrap gap-2">
+        {% if user.is_authenticated %}
+          <a class="btn btn-ink" href="{% url 'note_download' note.pk %}">Download {{ note.extension }}</a>
+          <button type="button" class="btn btn-outline-dark js-bookmark {% if bookmarked %}on{% endif %}" data-url="{% url 'toggle_bookmark' note.pk %}" data-label>
+            {% if bookmarked %}Saved{% else %}Save for later{% endif %}</button>
+        {% else %}
+          <a class="btn btn-ink" href="{% url 'login' %}?next={{ request.path }}">Log in to download</a>
+        {% endif %}
+        {% if is_owner or perms.notes.change_note %}<a class="btn btn-outline-dark" href="{% url 'note_update' note.pk %}">Edit</a>{% endif %}
+        {% if is_owner or perms.notes.delete_note %}<a class="btn btn-outline-danger" href="{% url 'note_delete' note.pk %}">Delete</a>{% endif %}
+        {% if can_report %}
+          {% if already_reported %}<button type="button" class="btn btn-outline-secondary" disabled id="report-btn">Reported</button>
+          {% else %}<button type="button" class="btn btn-outline-secondary" id="report-btn" data-bs-toggle="modal" data-bs-target="#reportModal">Report</button>{% endif %}
+        {% endif %}
+      </div>
+    </article>
+
+    {% if note.is_pdf %}
+    <section class="mt-4" aria-labelledby="preview-h">
+      <h2 class="h5" id="preview-h">Preview</h2>
+      {% if user.is_authenticated %}
+      <iframe class="pdf-frame" src="{% url 'note_preview' note.pk %}#view=FitH" title="PDF preview of {{ note.title }}" loading="lazy"></iframe>
+      <p class="small text-muted mt-1">Can't see the preview? <a href="{% url 'note_preview' note.pk %}" target="_blank" rel="noopener">Open the PDF in a new tab</a>.</p>
+      {% else %}
+      <div class="empty"><p class="mb-0"><a href="{% url 'login' %}?next={{ request.path }}">Log in</a> to preview this PDF.</p></div>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <section class="mt-4" aria-labelledby="comments-h">
+      <h2 class="h5" id="comments-h">Discussion (<span id="comment-count">{{ comments|length }}</span>)</h2>
+      <div id="comment-list">
+        {% for c in comments %}{% include "notes/_comment.html" %}{% empty %}<p class="text-muted" id="no-comments">No comments yet. Ask a question about this note.</p>{% endfor %}
+      </div>
+      {% if user.is_authenticated %}
+      <form id="comment-form" method="post" action="{% url 'add_comment' note.pk %}" class="mt-3">{% csrf_token %}
+        {{ comment_form.text }}
+        <button class="btn btn-ink btn-sm mt-2" type="submit">Post comment</button>
+      </form>
+      {% else %}<p class="mt-3"><a href="{% url 'login' %}?next={{ request.path }}">Log in</a> to join the discussion.</p>{% endif %}
+    </section>
+  </div>
+
+  <aside class="col-lg-4">
+    <div class="rating-box">
+      <div class="big-score"><span id="avg-rating">{% if note.avg_rating %}{{ note.avg_rating|floatformat:1 }}{% else %}&ndash;{% endif %}</span><small>/5</small></div>
+      <p class="small text-muted"><span id="rating-count">{{ note.rating_count }}</span> rating{{ note.rating_count|pluralize }} &middot; {{ note.downloads }} download{{ note.downloads|pluralize }}</p>
+      {% if user.is_authenticated and not is_owner %}
+      <p class="mb-1 small fw-semibold" id="rate-label">{% if my_rating %}Your rating: {{ my_rating }}&#9733; (click to change){% else %}Rate this note{% endif %}</p>
+      <div id="rating-widget" data-url="{% url 'rate_note' note.pk %}" data-mine="{{ my_rating }}" role="radiogroup" aria-label="Rate this note">
+        {% for i in stars %}<button type="button" class="star {% if i <= my_rating %}on{% endif %}" data-stars="{{ i }}" role="radio" aria-label="{{ i }} star{{ i|pluralize }}">&#9733;</button>{% endfor %}
+      </div>
+      {% elif is_owner %}<p class="small text-muted mb-0">You can't rate your own note.</p>
+      {% else %}<p class="small mb-0"><a href="{% url 'login' %}?next={{ request.path }}">Log in</a> to rate this note.</p>{% endif %}
+    </div>
+  </aside>
+</div>
+
+{% if can_report %}
+<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" id="report-form" method="post" action="{% url 'report_note' note.pk %}">{% csrf_token %}
+      <div class="modal-header">
+        <h2 class="modal-title h5" id="reportModalLabel">Report this note</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label fw-semibold" for="report-reason">What's wrong?</label>
+        <select class="form-select mb-3" id="report-reason" name="reason" required>
+          <option value="">Choose a reason</option>
+          {% for value, label in report_reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+        <label class="form-label fw-semibold" for="report-details">Details (optional)</label>
+        <textarea class="form-control" id="report-details" name="details" rows="3" maxlength="{{ report_max }}"></textarea>
+        <div class="text-danger small mt-2" id="report-error" role="alert"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-ink">Send report</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

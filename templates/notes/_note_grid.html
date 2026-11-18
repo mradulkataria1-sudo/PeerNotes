@@ -1,0 +1,41 @@
+<p class="text-muted small mb-3">{{ total|default:page_obj.paginator.count }} note{{ page_obj.paginator.count|pluralize }}</p>
+{% if page_obj.object_list %}
+<div class="row g-3">
+  {% for note in page_obj %}
+  <div class="col-md-6 col-xl-4">
+    <article class="note-card">
+      <div class="d-flex justify-content-between align-items-start gap-2">
+        <span class="subject-chip">{{ note.subject.name }}</span>
+        <button type="button" class="bm-btn js-bookmark {% if note.pk in bookmarked %}on{% endif %}"
+                data-url="{% url 'toggle_bookmark' note.pk %}" aria-pressed="{% if note.pk in bookmarked %}true{% else %}false{% endif %}"
+                aria-label="Save note" title="Save note">&#9873;</button>
+      </div>
+      <a class="note-thumb" href="{{ note.get_absolute_url }}" tabindex="-1" aria-hidden="true">
+        {% if note.thumbnail %}<img src="{{ note.thumbnail.url }}" alt="" loading="lazy">{% else %}
+        <span class="thumb-ph"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 2h8l5 5v15H6z"/><path d="M14 2v5h5M9 12h7M9 16h7"/></svg><b>{{ note.extension|default:"FILE" }}</b></span>{% endif %}
+      </a>
+      <h3 class="note-title"><a href="{{ note.get_absolute_url }}">{{ note.title }}</a></h3>
+      <p class="note-desc">{{ note.description|truncatechars:110 }}</p>
+      <div class="mb-2">{% for t in note.tag_list|slice:":3" %}<span class="tag">{{ t }}</span>{% endfor %}</div>
+      <div class="note-foot">
+        <span class="score" title="Average rating">{% if note.avg_rating %}{{ note.avg_rating|floatformat:1 }}&#9733; <small>({{ note.rating_count }})</small>{% else %}Not rated{% endif %}</span>
+        <span>{{ note.uploader.username }}</span>
+        <span>{{ note.downloads }} download{{ note.downloads|pluralize }}</span>
+      </div>
+    </article>
+  </div>
+  {% endfor %}
+</div>
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="mt-4 d-flex gap-3 align-items-center" aria-label="Pages">
+  {% if page_obj.has_previous %}<a class="btn btn-outline-dark btn-sm js-page" href="?{{ querystring }}&page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+  <span class="small">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a class="btn btn-outline-dark btn-sm js-page" href="?{{ querystring }}&page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<div class="empty">
+  <p class="mb-2"><strong>No notes match these filters.</strong></p>
+  <p class="mb-0">Loosen a filter, or <a href="{% url 'note_create' %}">upload the first note</a> for this topic.</p>
+</div>
+{% endif %}

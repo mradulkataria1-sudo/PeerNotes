@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Trending · PeerNotes{% endblock %}
+{% block content %}
+<h1 class="page-h">Trending and leaderboards</h1>
+<div class="text-muted small mb-3 formula">
+  <p class="mb-1"><strong>Score</strong> = recency &times; (0.7 &times; weighted rating + 0.3 &times; normalised downloads)</p>
+  <ul class="mb-0">
+    <li><strong>Weighted rating</strong> = (v / (v + m)) &times; R + (m / (v + m)) &times; C, where R is the note's average rating, v its number of ratings,
+      C the average of all ratings ({{ ranking.global_mean|floatformat:2 }} right now) and m = {{ ranking.min_votes|floatformat:"-1" }}.
+      A note with few ratings is pulled towards C, so a single 5-star vote can't top the chart. Unrated notes score 0 for this part.</li>
+    <li><strong>Normalised downloads</strong> are scaled 0 to 5 against the most-downloaded note.</li>
+    <li><strong>Recency</strong> = 0.5<sup>age / half-life</sup>{% if ranking.half_life_days %}: with a half-life of {{ ranking.half_life_days|floatformat:"-1" }} days, a note's score halves every {{ ranking.half_life_days|floatformat:"-1" }} days.{% else %}: decay is switched off in this deployment.{% endif %}</li>
+  </ul>
+</div>
+<div class="row g-4">
+  <section class="col-lg-7">
+    <h2 class="h5">Trending notes</h2>
+    <ol class="rank">
+      {% for n in trending %}
+      <li><a href="{{ n.get_absolute_url }}">{{ n.title }}</a>
+        <span class="text-muted small d-block">{{ n.subject.name }} by {{ n.uploader.username }}: {% if n.avg_rating %}{{ n.avg_rating|floatformat:1 }}&#9733;{% else %}not rated{% endif %}, {{ n.downloads }} downloads</span>
+        <span class="score-pill">{{ n.trending_score|floatformat:2 }}</span></li>
+      {% empty %}<li class="text-muted">Nothing to rank yet.</li>{% endfor %}
+    </ol>
+  </section>
+  <section class="col-lg-5">
+    <h2 class="h5">Top contributors</h2>
+    <table class="table table-sm align-middle">
+      <thead><tr><th>Student</th><th class="text-end">Notes</th><th class="text-end">Downloads</th><th class="text-end">Avg rating</th></tr></thead>
+      <tbody>
+      {% for u in contributors %}
+        <tr><td>{{ u.username }}</td><td class="text-end">{{ u.note_count }}</td><td class="text-end">{{ u.total_downloads }}</td>
+            <td class="text-end">{% if u.avg_received %}{{ u.avg_received|floatformat:1 }}{% else %}&ndash;{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="4" class="text-muted">No contributors yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<section class="mt-4">
+  <h2 class="h5">Rating trend by subject</h2>
+  <p class="text-muted small">Bars show the average rating given each month (last six months with ratings).</p>
+  <div class="table-responsive">
+  <table class="table align-middle">
+    <thead><tr><th>Subject</th><th class="text-end">Notes</th><th class="text-end">Ratings</th><th class="text-end">Downloads</th><th class="text-end">Average</th><th>Monthly trend</th></tr></thead>
+    <tbody>
+    {% for s in subjects %}
+      <tr><td>{{ s.name }}<span class="text-muted small d-block">Sem {{ s.semester }}, {{ s.branch }}</span></td>
+        <td class="text-end">{{ s.note_count }}</td><td class="text-end">{{ s.rating_count }}</td><td class="text-end">{{ s.downloads }}</td>
+        <td class="text-end">{% if s.avg_rating %}{{ s.avg_rating|floatformat:2 }}{% else %}&ndash;{% endif %}</td>
+        <td><div class="spark">{% for m in s.trend %}<span style="height:{{ m.pct }}%" title="{{ m.month|date:'M Y' }}: {{ m.avg|floatformat:1 }}"></span>{% empty %}<small class="text-muted">No ratings yet</small>{% endfor %}</div></td></tr>
+    {% empty %}<tr><td colspan="6" class="text-muted">No subjects have notes yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Delete note · PeerNotes{% endblock %}
+{% block content %}
+<div class="auth-box">
+  <h1>Delete this note?</h1>
+  <p>"{{ note.title }}" and its ratings and comments will be removed permanently.</p>
+  <form method="post">{% csrf_token %}
+    <button class="btn btn-danger" type="submit">Delete note</button>
+    <a class="btn btn-link" href="{{ note.get_absolute_url }}">Keep it</a>
+  </form>
+</div>
+{% endblock %}

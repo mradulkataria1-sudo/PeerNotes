@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Browse notes · PeerNotes{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <aside class="col-lg-3">
+    <form id="filters" method="get" class="filter-panel" role="search">
+      <label class="form-label" for="q">Search</label>
+      <input class="form-control mb-3" id="q" name="q" type="search" value="{{ f.q }}" placeholder="Title, tag or subject" autocomplete="off">
+
+      <label class="form-label" for="subject">Subject</label>
+      <select class="form-select mb-3" id="subject" name="subject">
+        <option value="">All subjects</option>
+        {% for s in subjects %}<option value="{{ s.pk }}" {% if f.subject == s.pk %}selected{% endif %}>{{ s.name }} (Sem {{ s.semester }})</option>{% endfor %}
+      </select>
+
+      <label class="form-label" for="semester">Semester</label>
+      <select class="form-select mb-3" id="semester" name="semester">
+        <option value="">Any semester</option>
+        {% for v, label in semesters %}<option value="{{ v }}" {% if f.semester == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+
+      <label class="form-label" for="branch">Branch</label>
+      <select class="form-select mb-3" id="branch" name="branch">
+        <option value="">Any branch</option>
+        {% for v, label in branches %}<option value="{{ v }}" {% if f.branch == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+
+      <label class="form-label" for="tag">Tag</label>
+      <input class="form-control mb-3" id="tag" name="tag" value="{{ f.tag }}" placeholder="e.g. midterm" autocomplete="off">
+
+      <label class="form-label" for="sort">Sort by</label>
+      <select class="form-select mb-3" id="sort" name="sort">
+        <option value="trending" {% if f.sort == "trending" %}selected{% endif %}>Trending</option>
+        <option value="rated" {% if f.sort == "rated" %}selected{% endif %}>Highest rated</option>
+        <option value="downloads" {% if f.sort == "downloads" %}selected{% endif %}>Most downloaded</option>
+        <option value="newest" {% if f.sort == "newest" %}selected{% endif %}>Newest</option>
+      </select>
+      <noscript><button class="btn btn-ink w-100" type="submit">Apply filters</button></noscript>
+      <a class="small" href="{% url 'note_list' %}" id="clear-filters">Clear filters</a>
+    </form>
+  </aside>
+  <section class="col-lg-9" aria-live="polite">
+    <div id="note-grid">{% include "notes/_note_grid.html" %}</div>
+  </section>
+</div>
+{% endblock %}
